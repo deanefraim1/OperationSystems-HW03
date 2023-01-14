@@ -3,16 +3,20 @@
 
 #include "Session.hpp"
 #include "PacketStructs.hpp"
+#include <sys/select.h>
 
 class Helpers
 {
 public:
-    static int InitializeSocket();
-    static void BindSocket(Session session);
-    static void RecieveMassage(Session session);
-    static struct WRQ ParseBufferAsWrqPacket(char buffer[516]);
-    static struct ACK ParseBufferAsAckPacket(char buffer[516]);
-    static struct Data ParseBufferAsDataPacket(char buffer[516]);
+    static void BindAddressToSocket(struct sockaddr_in address, int socketFd);
+    static void ReceiveMassage(Session session);
+    static struct WrqPacket ParseBufferAsWrqPacket(char buffer[516]);
+    static struct AckPacket ParseBufferAsAckPacket(char buffer[516]);
+    static struct DataPacket ParseBufferAsDataPacket(char buffer[516]);
+    static fd_set GetSocketFdSetFromOneSocketFd(int socketFd);
+    static struct timeval ParseTimeoutLimitAsTimeval(int timeoutLimit);
+    static void ExitProgramWithPERROR(string errorMessage);
+    static void ExitProgramWithSTDERROR(string errorMessage);
 };
 
 #endif

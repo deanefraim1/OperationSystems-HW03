@@ -20,127 +20,48 @@
 
 using namespace std;
 
-int Helpers::InitializeSocket()
+void Helpers::BindAddressToSocket(struct sockaddr_in address, int socketFd)
 {
-    int sockedFd = socket(AF_INET, SOCK_DGRAM, 0);
-    if (sockedFd < 0)
-    {
-        cout << "Error: socket() failed" << endl;
-        exit(1);
-    }
-    return sockedFd;
-}
-
-void Helpers::BindSocket(Session session)
-{
-    if (bind(session.socketFd, (struct sockaddr *)&(session.serverAddress), sizeof(session.serverAddress)) < 0)
+    int bindReturnValue = ::bind(socketFd, (struct sockaddr *)&address, sizeof(address));
+    if (bindReturnValue < 0)
     {
         cout << "Error: bind() failed" << endl;
         exit(1);
     }
 }
 
-void Helpers::RecieveMassage(Session session)
+void Helpers::ReceiveMassage(Session session)
 {
-    string massage;
-    fd_set socketFdSet;
-    struct timeval timeoutVal;
-    struct WRQ wrqPacket;
-    int fileToWriteTo;
-    sockaddr_in originalClientAddress;
     while (1)
     {
-        FD_ZERO(&socketFdSet);
-        FD_SET(session.socketFd, &socketFdSet);
+        fd_set socketFdSet = Helpers::GetSocketFdSetFromOneSocketFd(session.socketFd);
 
-        timeoutVal.tv_sec = session.timeout;
-        timeoutVal.tv_usec = 0;
-
-        int selectReturnValue = select(session.socketFd + 1, &socketFdSet, NULL, NULL, &timeoutVal);
+        int selectReturnValue = select(session.socketFd + 1, &socketFdSet, NULL, NULL, &(session.timeoutLimitVal));
         if(selectReturnValue < 0)
-        {
-            cout << "Error: select() failed" << endl;
-            exit(1);
-        }
-        else if(selectReturnValue == 0)
-        {
-            cout << "Error: select() timed out" << endl;
-            if(fileToWriteTo > 0)
-                remove(wrqPacket.filename.c_str());
+            Helpers::ExitProgramWithPERROR("select() failed");
 
-            break;
+        else if(selectReturnValue == 0) // timeout has reached
+        {
+            if(session.currentNumberOfResends >= session.maxNumberOfResendsAllowed)
+            {
+                if(session.fileToWriteToFd > 0)
+                    remove(session.fileToWriteToName.c_str());
+
+                session.EndClientConnection();
+            }
+            else
+                session.SendAckPacket();
         }
         else 
-        {
-            int bytesRecieved = recvfrom(session.socketFd, session.buffer, session.maxBufferSize, 0, (struct sockaddr *)&(session.clientAddress), &(session.clientAddressLength));
-            if (bytesRecieved < 0)
-            {
-                cout << "Error: recvfrom() failed" << endl;
-                exit(1);
-            }
-            if(session.buffer[0] == '2')
-            {
-                if(wrqPacket != NULL)
-                {
-                    cout << "Error: received more than one WRQ packet" << endl;
-                }
-                else
-                {
-                    originalClientAddress = session.clientAddress;
-                    wrqPacket = ParseBufferAsWrqPacket(session.buffer);
-                    fileToWriteTo = open(wrqPacket.filename.c_str(), O_WRONLY | O_CREAT, 0666);
-                    if(fileToWriteTo < 0)
-                    {
-                        cout << "Error: open() failed" << endl;
-                        exit(1);
-                    }
-                    struct ACK ackPacket;
-                    ackPacket.blockNumber = '0';
-                    int bytesSent = sendto(session.socketFd, &ackPacket, sizeof(ackPacket), 0, (struct sockaddr *)&(session.clientAddress), session.clientAddressLength);
-                    if(bytesSent < 0)
-                    {
-                        cout << "Error: sendto() failed" << endl;
-                        exit(1);
-                    }
-                }
-            }
-            else if(session.buffer[0] == '3')
-            {
-                if(session.clientAddress != originalClientAddress)
-                {
-                    cout << "Error: received DATA packet from wrong client" << endl;
-                    break;
-                }
-                else
-                {
-                    struct Data dataPacket = ParseBufferAsDataPacket(session.buffer);
-                    int bytesWritten = write(fileToWriteTo, dataPacket.data, strlen(dataPacket.data));
-                    if(bytesWritten < 0)
-                    {
-                        cout << "Error: write() failed" << endl;
-                        exit(1);
-                    }
-                    else if(bytesWritten < strlen(dataPacket.data))
-                    {
-                        int fileCloseReturnValue = close(fileToWriteTo);
-                        if (fileCloseReturnValue < 0)
-                        {
-                            cout << "Error: close() failed" << endl;
-                            exit(1);
-                        }
-                        break;
-                    }
-                }
-            }
-        }
+            session.RecievePacketFromClient();
     }
 }
 
-struct WRQ Helpers::ParseBufferAsWrqPacket(char buffer[516])
+struct WrqPacket Helpers::ParseBufferAsWrqPacket(char buffer[516])
 {
-    struct WRQ wrqPacket;
-    wrqPacket.filename = string(buffer + 2);
-    wrqPacket.transmissionMode = string(buffer + 2 + wrqPacket.filename.length() + 1);
+    struct WrqPacket wrqPacket;
+    wrqPacket.fileName = string(buffer + 2);
+    wrqPacket.transmissionMode = string(buffer + 2 + wrqPacket.fileName.length() + 1);
     if(wrqPacket.transmissionMode != "octet")
     {
         cout << "Error: transmission mode is not octet" << endl;
@@ -149,9 +70,9 @@ struct WRQ Helpers::ParseBufferAsWrqPacket(char buffer[516])
     return wrqPacket;
 }
 
-struct Data Helpers::ParseBufferAsDataPacket(char buffer[516])
+struct DataPacket Helpers::ParseBufferAsDataPacket(char buffer[516])
 {
-    struct Data dataPacket;
+    struct DataPacket dataPacket;
     dataPacket.blockNumber[0] = buffer[2];
     dataPacket.blockNumber[1] = buffer[3];
     for(int i = 4; i < 516; i++)
@@ -162,4 +83,40 @@ struct Data Helpers::ParseBufferAsDataPacket(char buffer[516])
             break;
     }
     return dataPacket;
+}
+
+struct AckPacket Helpers::ParseBufferAsAckPacket(char buffer[516])
+{
+    struct AckPacket ackPacket;
+    ackPacket.blockNumber[0] = buffer[2];
+    ackPacket.blockNumber[1] = buffer[3];
+    return ackPacket;
+}
+
+fd_set Helpers::GetSocketFdSetFromOneSocketFd(int socketFd)
+{
+    fd_set socketFdSet;
+    FD_ZERO(&socketFdSet);
+    FD_SET(socketFd, &socketFdSet);
+    return socketFdSet;
+}
+
+struct timeval Helpers::ParseTimeoutLimitAsTimeval(int timeoutLimit)
+{
+    struct timeval timeoutVal;
+    timeoutVal.tv_sec = timeoutLimit;
+    timeoutVal.tv_usec = 0;
+    return timeoutVal;
+}
+
+void Helpers::ExitProgramWithPERROR(string errormessage)
+{
+    perror(("TTFTP_ERROR:" + errormessage).c_str());
+    exit(1);
+}
+
+void Helpers::ExitProgramWithSTDERROR(string errorMessage)
+{
+    cout << "TTFTP_ERROR:" << errorMessage << endl;
+    exit(1);
 }

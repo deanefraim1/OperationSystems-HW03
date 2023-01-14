@@ -2,22 +2,29 @@
 
 using namespace std;
 
-struct WRQ
+struct WrqPacket
 {
-    const char opcode[2] = "2";
-    string filename;
+    const short opcode = 2;
+    string fileName;
     string transmissionMode;
 }__attribute__((packed));
 
-struct ACK
+struct AckPacket
 {
-    const char opcode[2] = "4";
-    char blockNumber[2];
+    const short opcode = 4;
+    short blockNumber;
 }__attribute__((packed));
 
-struct Data
+struct DataPacket
 {
-    const char opcode[2] = "3";
-    char blockNumber[2];
+    const short opcode = 3;
+    short blockNumber;
     char data[512];
+}__attribute__((packed));
+
+struct ErrorPacket
+{
+    const short opcode = 5;
+    short errorCode;
+    string errorMessage; // what size?!±?! 
 }__attribute__((packed));
