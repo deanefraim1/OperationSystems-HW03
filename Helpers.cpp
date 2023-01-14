@@ -73,9 +73,8 @@ struct WrqPacket Helpers::ParseBufferAsWrqPacket(char buffer[516])
 struct DataPacket Helpers::ParseBufferAsDataPacket(char buffer[516])
 {
     struct DataPacket dataPacket;
-    dataPacket.blockNumber[0] = buffer[2];
-    dataPacket.blockNumber[1] = buffer[3];
-    for(int i = 4; i < 516; i++)
+    //TODO - insert the block number from buffer to dataPacket  
+    for (int i = 4; i < 516; i++)
     {
         dataPacket.data[i - 4] = buffer[i];
         
@@ -88,8 +87,7 @@ struct DataPacket Helpers::ParseBufferAsDataPacket(char buffer[516])
 struct AckPacket Helpers::ParseBufferAsAckPacket(char buffer[516])
 {
     struct AckPacket ackPacket;
-    ackPacket.blockNumber[0] = buffer[2];
-    ackPacket.blockNumber[1] = buffer[3];
+    //TODO - insert the block number from buffer to dataPacket  
     return ackPacket;
 }
 
