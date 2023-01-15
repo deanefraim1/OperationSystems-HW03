@@ -1,8 +1,6 @@
 #include "Helpers.hpp"
 #include "Session.hpp"
 
-#define MAX_BUFFER_SIZE 512
-
 int main(int argc, char *argv[])
 {
     unsigned short serverPort = atoi(argv[1]);
