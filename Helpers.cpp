@@ -19,7 +19,7 @@ void Helpers::BindAddressToSocket(struct sockaddr_in address, int socketFd)
 
 void Helpers::ReceiveMassage(Session session)
 {
-    while (1)
+    while (true)
     {
         fd_set socketFdSet = Helpers::GetSocketFdSetFromOneSocketFd(session.socketFd);
         int selectReturnValue = select(session.socketFd + 1, &socketFdSet, NULL, NULL, &(session.timeoutLimitVal));
