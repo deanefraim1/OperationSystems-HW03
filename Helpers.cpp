@@ -64,9 +64,6 @@ struct WrqPacket Helpers::ParseBufferAsWrqPacket(char buffer[516])
 {
     struct WrqPacket wrqPacket;
     memccpy(wrqPacket.fileName, buffer + 2, '\0', MAX_FILE_NAME_SIZE); // we can assume that the file name is not longer than MAX_FILE_NAME_SIZE bytes
-    memccpy(wrqPacket.transmissionMode, buffer + 2 + strlen(wrqPacket.fileName) + 1, '\0', MAX_TRANSMISSION_MODE_SIZE); // we can assume that the transmission mode is not longer than MAX_TRANSMISSION_MODE_SIZE bytes
-    if(strcmp(wrqPacket.transmissionMode, "octet") != 0) // if the transmission mode is not octet
-        Helpers::ExitProgramWithPERROR("Transmission mode is not octet");
     return wrqPacket;
 }
 

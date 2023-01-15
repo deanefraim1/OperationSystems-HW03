@@ -80,13 +80,17 @@ void Session::SendErrorPacketToOriginalClient(short errorCode, string errorMessa
 
 int Session::RecievePacketFromClient()
 {
-    int recvfromReturnValue = recvfrom(this->socketFd, this->packetDataBuffer, MAX_BUFFER_SIZE, 0, (struct sockaddr *)&(this->currentPacketClientAddress), &(this->currentPacketClientAddress.addressLength));
+    int recvfromReturnValue;
+    if (this->originalClientAddress.addressLength == 0) // we are not in a session with a client
+        recvfromReturnValue = recvfrom(this->socketFd, this->packetDataBuffer, MAX_BUFFER_SIZE, 0, (struct sockaddr *)&(this->originalClientAddress), &(this->originalClientAddress.addressLength));
+    else // we are in a session with a client
+        recvfromReturnValue = recvfrom(this->socketFd, this->packetDataBuffer, MAX_BUFFER_SIZE, 0, (struct sockaddr *)&(this->currentPacketClientAddress), &(this->currentPacketClientAddress.addressLength));
     if (recvfromReturnValue < 0)
         Helpers::ExitProgramWithPERROR("recvfrom() failed");
     char packetOpcode = this->packetDataBuffer[0];
     if(packetOpcode == '2') // WRQ packet
     {
-        if(this->numberOfBlocksRecieved != -1) // we are already in a session with another client
+        if(this->originalClientAddress.addressLength != 0) // we are already in a session with another client
         {
             this->SendErrorPacketToCurrentClient(4, "Unexpected packet");
             return END_CONNECTION_FAILURE;

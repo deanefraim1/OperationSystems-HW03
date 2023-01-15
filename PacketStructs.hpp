@@ -4,8 +4,8 @@
 #include <string>
 
 #define MAX_DATA_SIZE 512
-#define MAX_FILE_NAME_SIZE 257
-#define MAX_TRANSMISSION_MODE_SIZE 257
+#define MAX_FILE_NAME_SIZE 508
+#define TRANSMISSION_MODE_SIZE 6
 #define MAX_ERROR_MESSAGE_SIZE 512
 
 using namespace std;
@@ -14,7 +14,7 @@ struct WrqPacket
 {
     const short opcode = 2;
     char fileName[MAX_FILE_NAME_SIZE];
-    char transmissionMode[MAX_TRANSMISSION_MODE_SIZE];
+    const char transmissionMode[TRANSMISSION_MODE_SIZE] = "octet";
 }__attribute__((packed));
 
 struct AckPacket
