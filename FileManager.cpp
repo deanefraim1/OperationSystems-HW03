@@ -39,3 +39,12 @@ void FileManager::WriteToFile(char* data, int size)
     if (writeReturnValue < 0)
         Helpers::ExitProgramWithPERROR("write() failed");
 }
+
+bool FileManager::isFileExcist(string fileName)
+{
+    int fd = open(fileName.c_str(), O_RDONLY, 0666);
+    if (fd == -1) // file does not excist
+        return false;
+    close(fd);
+    return true; 
+}

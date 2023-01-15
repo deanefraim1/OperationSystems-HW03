@@ -18,6 +18,7 @@ public:
     void DeleteFile();
     void CloseFile();
     void WriteToFile(char* data, int size);
+    static bool isFileExcist(string fileName);
 };
 
 #endif

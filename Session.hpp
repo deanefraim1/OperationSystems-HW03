@@ -7,7 +7,8 @@
 #include "Address.hpp"
 #include "FileManager.hpp"
 
-#define END_CONNECTION 1
+#define END_CONNECTION_SUCCESS 1
+#define END_CONNECTION_FAILURE -1
 #define GET_NEXT_PACKET 0
 #define NOT_EXIST -1
 #define EMPTY -1
@@ -18,7 +19,7 @@ using namespace std;
 class Session
 {
 public:
-    int serverSocketFd;
+    int socketFd;
     FileManager originalClientFileToWriteTo;
     Address serverAddress;
     Address originalClientAddress;
@@ -40,7 +41,7 @@ public:
     void SendErrorPacketToCurrentClient(short errorCode, string errorMessage);
     void SendErrorPacketToOriginalClient(short errorCode, string errorMessage);
     int RecievePacketFromClient();
-    void HandleWrqPacket();
+    int HandleWrqPacket();
     int HandleDataPacket();
 };
 

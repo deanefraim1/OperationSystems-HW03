@@ -13,11 +13,8 @@ using namespace std;
 Session::Session(unsigned short serverPort, int timeoutLimit, int maxNumberOfResendsAllowed)
 {
     this->InitializeSocket();
-
     this->serverAddress.InitializeAsServerAddress(serverPort);
-
     this->CleanDataBuffer();
-
     this->timeoutLimitVal = Helpers::ParseTimeoutLimitAsTimeval(timeoutLimit);
     this->maxNumberOfResendsAllowed = maxNumberOfResendsAllowed;
     this->currentNumberOfResends = 0;
@@ -32,7 +29,7 @@ void Session::InitializeSocket()
         cout << "Error: socket() failed" << endl;
         exit(1);
     }
-    this->serverSocketFd = sockedFd;
+    this->socketFd = sockedFd;
 }
 
 void Session::EndClientConnection()
@@ -41,10 +38,8 @@ void Session::EndClientConnection()
     this->currentPacketClientAddress.CleanAddress();
 
     memset(packetDataBuffer, 0, MAX_BUFFER_SIZE);
-
     if (this->originalClientFileToWriteTo.fd != NOT_EXCIST)
         this->originalClientFileToWriteTo.CloseFile();
-
     this->currentNumberOfResends = 0;
     this->numberOfBlocksRecieved = EMPTY;
 }
@@ -58,7 +53,7 @@ void Session::SendAckPacket()
 {
     struct AckPacket ackPacket;
     ackPacket.blockNumber = htons(this->numberOfBlocksRecieved);
-    int sendtoReturnValue = sendto(this->serverSocketFd, &ackPacket, sizeof(ackPacket), 0, (struct sockaddr *)&this->originalClientAddress, this->originalClientAddress.addressLength);
+    int sendtoReturnValue = sendto(this->socketFd, &ackPacket, sizeof(ackPacket), 0, (struct sockaddr *)&this->originalClientAddress, this->originalClientAddress.addressLength);
     if (sendtoReturnValue < 0)
         Helpers::ExitProgramWithPERROR("sendto() failed");
 }
@@ -68,7 +63,7 @@ void Session::SendErrorPacketToCurrentClient(short errorCode, string errorMessag
     struct ErrorPacket errorPacket;
     errorPacket.errorCode = htons(errorCode);
     memccpy(errorPacket.errorMessage, errorMessage.c_str(), '\0', errorMessage.length());
-    int sendtoReturnValue = sendto(this->serverSocketFd, &errorPacket, sizeof(errorPacket), 0, (struct sockaddr *)&this->currentPacketClientAddress, this->currentPacketClientAddress.addressLength);
+    int sendtoReturnValue = sendto(this->socketFd, &errorPacket, sizeof(errorPacket), 0, (struct sockaddr *)&this->currentPacketClientAddress, this->currentPacketClientAddress.addressLength);
     if (sendtoReturnValue < 0)
         Helpers::ExitProgramWithPERROR("sendto() failed");
 }
@@ -78,27 +73,24 @@ void Session::SendErrorPacketToOriginalClient(short errorCode, string errorMessa
     struct ErrorPacket errorPacket;
     errorPacket.errorCode = htons(errorCode);
     memccpy(errorPacket.errorMessage, errorMessage.c_str(), '\0', errorMessage.length());
-    int sendtoReturnValue = sendto(this->serverSocketFd, &errorPacket, sizeof(errorPacket), 0, (struct sockaddr *)&this->originalClientAddress, this->originalClientAddress.addressLength);
+    int sendtoReturnValue = sendto(this->socketFd, &errorPacket, sizeof(errorPacket), 0, (struct sockaddr *)&this->originalClientAddress, this->originalClientAddress.addressLength);
     if (sendtoReturnValue < 0)
         Helpers::ExitProgramWithPERROR("sendto() failed");
 }
 
 int Session::RecievePacketFromClient()
 {
-    int recvfromReturnValue = recvfrom(this->serverSocketFd, this->packetDataBuffer, MAX_BUFFER_SIZE, 0, (struct sockaddr *)&(this->currentPacketClientAddress), &(this->currentPacketClientAddress.addressLength));
+    int recvfromReturnValue = recvfrom(this->socketFd, this->packetDataBuffer, MAX_BUFFER_SIZE, 0, (struct sockaddr *)&(this->currentPacketClientAddress), &(this->currentPacketClientAddress.addressLength));
     if (recvfromReturnValue < 0)
         Helpers::ExitProgramWithPERROR("recvfrom() failed");
-
     char packetOpcode = this->packetDataBuffer[0];
-
     if(packetOpcode == '2') // WRQ packet
     {
         if(this->numberOfBlocksRecieved != -1) // we are already in a session with another client
         {
             this->SendErrorPacketToCurrentClient(4, "Unexpected packet");
-            return GET_NEXT_PACKET;
+            return END_CONNECTION_FAILURE;
         }
-
         else
         {
             this->HandleWrqPacket();
@@ -113,7 +105,6 @@ int Session::RecievePacketFromClient()
             this->SendErrorPacketToCurrentClient(4, "Unexpected packet");
             return GET_NEXT_PACKET;
         }
-
         else
             return this->HandleDataPacket();
     }
@@ -124,39 +115,59 @@ int Session::RecievePacketFromClient()
             this->SendErrorPacketToCurrentClient(4, "Unexpected packet");
             return GET_NEXT_PACKET;
         }
-
         else
         {
             this->SendErrorPacketToOriginalClient(4, "Unexpected packet");
-            return END_CONNECTION;
+            return END_CONNECTION_FAILURE;
         }
     }
 }
 
-void Session::HandleWrqPacket()
+int Session::HandleWrqPacket()
 {
     struct WrqPacket wrqPacket = Helpers::ParseBufferAsWrqPacket(this->packetDataBuffer);
-    this->originalClientFileToWriteTo = FileManager(wrqPacket.fileName);
-    this->numberOfBlocksRecieved = 0;
-    this->currentNumberOfResends = 0;
-    this->SendAckPacket();
+    if(this->originalClientAddress.address.sin_addr.s_addr != NOT_EXCIST) // we are already in a session with another client
+    {
+        this->SendErrorPacketToCurrentClient(4, "Unexpected packet");
+        return END_CONNECTION_FAILURE;
+    }
+    else if(FileManager::isFileExcist(wrqPacket.fileName)) 
+    {
+        this->SendErrorPacketToCurrentClient(6, "File already exists");
+        return END_CONNECTION_FAILURE;
+    }    
+    else
+    {
+        this->originalClientFileToWriteTo = FileManager(wrqPacket.fileName);
+        this->numberOfBlocksRecieved = 0;
+        this->currentNumberOfResends = 0;
+        this->SendAckPacket();
+        return GET_NEXT_PACKET;
+    }
 }
 
 int Session::HandleDataPacket()
 {
     struct DataPacket dataPacket = Helpers::ParseBufferAsDataPacket(this->packetDataBuffer);
-    if(ntohs(dataPacket.blockNumber) != this->numberOfBlocksRecieved + 1)
+    if(this->originalClientAddress.address.sin_addr.s_addr == NOT_EXCIST) // we are not in a session with a client
+    {
+        this->SendErrorPacketToCurrentClient(4, "Unexpected packet");
+        return END_CONNECTION_FAILURE;
+    }
+    else if(ntohs(dataPacket.blockNumber) != this->numberOfBlocksRecieved + 1) // wrong block number
     {
         this->SendErrorPacketToCurrentClient(0, "Bad block number");
-        return END_CONNECTION;
+        return END_CONNECTION_FAILURE;
     }
-    this->originalClientFileToWriteTo.WriteToFile(dataPacket.data, strlen(dataPacket.data));
-
-    this->numberOfBlocksRecieved++;
-    this->currentNumberOfResends = 0;
-    this->SendAckPacket();
-    if(strlen(dataPacket.data) < MAX_DATA_SIZE) // last packet
-        return END_CONNECTION;
     else
-        return GET_NEXT_PACKET;
+    {
+        this->originalClientFileToWriteTo.WriteToFile(dataPacket.data, strlen(dataPacket.data));
+        this->numberOfBlocksRecieved++;
+        this->currentNumberOfResends = 0;
+        this->SendAckPacket();
+        if(strlen(dataPacket.data) < MAX_DATA_SIZE) // last packet
+            return END_CONNECTION_SUCCESS;
+        else
+            return GET_NEXT_PACKET;
+    }
 }
