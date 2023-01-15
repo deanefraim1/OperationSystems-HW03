@@ -1,15 +1,3 @@
-#include <iostream>
-#include <string>
-#include <cstdlib>
-#include <cstdio>
-#include <cstring>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <netdb.h>
-#include <arpa/inet.h>
-#include <errno.h>
 #include "Helpers.hpp"
 #include "Session.hpp"
 
@@ -24,7 +12,5 @@ int main(int argc, char *argv[])
     Session session(serverPort, timeoutLimit, maxNumberOfResends);
 
     while(1)
-    {
         Helpers::ReceiveMassage(session);
-    }
 }

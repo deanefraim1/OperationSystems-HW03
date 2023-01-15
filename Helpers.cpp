@@ -1,22 +1,12 @@
 #include <iostream>
-#include <string>
-#include <cstdlib>
-#include <cstdio>
-#include <cstring>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <netdb.h>
-#include <arpa/inet.h>
-#include <errno.h>
-#include "Helpers.hpp"
-#include <sys/types.h>
-#include <sys/socket.h>
-#include "Session.hpp"
-#include "PacketStructs.hpp"
 #include <fcntl.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include "Helpers.hpp"
+#include "Session.hpp"
+#include "PacketStructs.hpp"
+
 
 using namespace std;
 
@@ -24,56 +14,62 @@ void Helpers::BindAddressToSocket(struct sockaddr_in address, int socketFd)
 {
     int bindReturnValue = ::bind(socketFd, (struct sockaddr *)&address, sizeof(address));
     if (bindReturnValue < 0)
-    {
-        cout << "Error: bind() failed" << endl;
-        exit(1);
-    }
+        Helpers::ExitProgramWithPERROR("bind() failed");
 }
 
 void Helpers::ReceiveMassage(Session session)
 {
     while (1)
     {
-        fd_set socketFdSet = Helpers::GetSocketFdSetFromOneSocketFd(session.socketFd);
+        fd_set socketFdSet = Helpers::GetSocketFdSetFromOneSocketFd(session.serverSocketFd);
 
-        int selectReturnValue = select(session.socketFd + 1, &socketFdSet, NULL, NULL, &(session.timeoutLimitVal));
+        int selectReturnValue = select(session.serverSocketFd + 1, &socketFdSet, NULL, NULL, &(session.timeoutLimitVal));
         if(selectReturnValue < 0)
             Helpers::ExitProgramWithPERROR("select() failed");
 
         else if(selectReturnValue == 0) // timeout has reached
         {
-            if(session.currentNumberOfResends >= session.maxNumberOfResendsAllowed)
+            if(session.currentNumberOfResends >= session.maxNumberOfResendsAllowed) // no more resends allowed
             {
-                if(session.fileToWriteToFd > 0)
-                    remove(session.fileToWriteToName.c_str());
-
+                if(session.originalClientFileToWriteTo.fd != NOT_EXIST) // if a file is open
+                    session.originalClientFileToWriteTo.DeleteFile();
+                
+                session.SendErrorPacketToOriginalClient(0, "Abandoning file transmission"); // send error packet to client
                 session.EndClientConnection();
+                return;
             }
             else
+            {
+                session.currentNumberOfResends++;
                 session.SendAckPacket();
+            }
         }
-        else 
-            session.RecievePacketFromClient();
+        else // got a packet from client
+        {
+            int recievePacketReturnValue = session.RecievePacketFromClient();
+            if(recievePacketReturnValue == END_CONNECTION)
+            {
+                session.EndClientConnection();
+                return;
+            }
+        } 
     }
 }
 
 struct WrqPacket Helpers::ParseBufferAsWrqPacket(char buffer[516])
 {
     struct WrqPacket wrqPacket;
-    wrqPacket.fileName = string(buffer + 2);
-    wrqPacket.transmissionMode = string(buffer + 2 + wrqPacket.fileName.length() + 1);
+    memccpy(wrqPacket.fileName, buffer + 2, '\0', MAX_FILE_NAME_SIZE); // we can assume that the file name is not longer than MAX_FILE_NAME_SIZE bytes
+    memccpy(wrqPacket.transmissionMode, buffer + 2 + strlen(wrqPacket.fileName) + 1, '\0', MAX_TRANSMISSION_MODE_SIZE); // we can assume that the transmission mode is not longer than MAX_TRANSMISSION_MODE_SIZE bytes
     if(wrqPacket.transmissionMode != "octet")
-    {
-        cout << "Error: transmission mode is not octet" << endl;
-        exit(1);
-    }
+        Helpers::ExitProgramWithPERROR("Transmission mode is not octet");
     return wrqPacket;
 }
 
 struct DataPacket Helpers::ParseBufferAsDataPacket(char buffer[516])
 {
     struct DataPacket dataPacket;
-    //TODO - insert the block number from buffer to dataPacket  
+    memcpy(&dataPacket.blockNumber, buffer + 2, 2);
     for (int i = 4; i < 516; i++)
     {
         dataPacket.data[i - 4] = buffer[i];
@@ -87,7 +83,7 @@ struct DataPacket Helpers::ParseBufferAsDataPacket(char buffer[516])
 struct AckPacket Helpers::ParseBufferAsAckPacket(char buffer[516])
 {
     struct AckPacket ackPacket;
-    //TODO - insert the block number from buffer to dataPacket  
+    memcpy(&ackPacket.blockNumber, buffer + 2, 2);  
     return ackPacket;
 }
 

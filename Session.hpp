@@ -4,25 +4,26 @@
 #include <netinet/in.h>
 #include <sys/time.h>
 #include <string>
+#include "Address.hpp"
+#include "FileManager.hpp"
+
+#define END_CONNECTION 1
+#define GET_NEXT_PACKET 0
+#define NOT_EXIST -1
+#define EMPTY -1
+#define MAX_BUFFER_SIZE 516
 
 using namespace std;
-
-#define MAX_BUFFER_SIZE 512
 
 class Session
 {
 public:
-    int socketFd;
-    int fileToWriteToFd;
-    string fileToWriteToName;
-    struct sockaddr_in serverAddress;
-    socklen_t serverAddressLength;
-    struct sockaddr_in originalClientAddress;
-    socklen_t originalClientAddressLength;
-    struct sockaddr_in currentClientAddress;
-    socklen_t currentClientAddressLength;
-    char dataBuffer[MAX_BUFFER_SIZE];
-    const int maxDataBufferSize = MAX_BUFFER_SIZE;
+    int serverSocketFd;
+    FileManager originalClientFileToWriteTo;
+    Address serverAddress;
+    Address originalClientAddress;
+    Address currentPacketClientAddress;
+    char packetDataBuffer[MAX_BUFFER_SIZE];
     timeval timeoutLimitVal;
     int maxNumberOfResendsAllowed;
     int currentNumberOfResends;
@@ -30,9 +31,14 @@ public:
 
     Session(unsigned short serverPort, int timeout, int maxNumberOfResendsAllowed);
     void InitializeSocket();
+    void InitializeServerAddress(unsigned short serverPort);
     void EndClientConnection();
+    void CleanOriginalClientAddress();
+    void CleanCurrentPacketClientAddress();
+    void CleanDataBuffer();
     void SendAckPacket();
-    void SendErrorPacket(short errorCode, string errorMessage);
+    void SendErrorPacketToCurrentClient(short errorCode, string errorMessage);
+    void SendErrorPacketToOriginalClient(short errorCode, string errorMessage);
     int RecievePacketFromClient();
     void HandleWrqPacket();
     int HandleDataPacket();
