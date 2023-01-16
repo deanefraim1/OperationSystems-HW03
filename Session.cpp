@@ -81,48 +81,50 @@ void Session::SendErrorPacketToOriginalClient(short errorCode, string errorMessa
 int Session::RecievePacketFromClient()
 {
     int recvfromReturnValue;
+    char packetOpcode;
     if (this->originalClientAddress.addressLength == 0) // we are not in a session with a client
+    {
         recvfromReturnValue = recvfrom(this->socketFd, this->packetDataBuffer, MAX_BUFFER_SIZE, 0, (struct sockaddr *)&(this->originalClientAddress), &(this->originalClientAddress.addressLength));
+        if (recvfromReturnValue < 0)
+            Helpers::ExitProgramWithPERROR("recvfrom() failed");
+        packetOpcode = this->packetDataBuffer[0];
+        if(packetOpcode == '2') // WRQ packet
+        {
+            return this->HandleWrqPacket();
+        }
+        else
+        {
+            this->SendErrorPacketToCurrentClient(7, "Unknown user");
+            return GET_NEXT_PACKET;
+        }
+    }
     else // we are in a session with a client
+    {
         recvfromReturnValue = recvfrom(this->socketFd, this->packetDataBuffer, MAX_BUFFER_SIZE, 0, (struct sockaddr *)&(this->currentPacketClientAddress), &(this->currentPacketClientAddress.addressLength));
-    if (recvfromReturnValue < 0)
-        Helpers::ExitProgramWithPERROR("recvfrom() failed");
-    char packetOpcode = this->packetDataBuffer[0];
-    if(packetOpcode == '2') // WRQ packet
-    {
-        if(this->originalClientAddress.addressLength != 0) // we are already in a session with another client
-        {
-            this->SendErrorPacketToCurrentClient(4, "Unexpected packet");
-            return END_CONNECTION_FAILURE;
-        }
-        else
-        {
-            this->HandleWrqPacket();
-            return GET_NEXT_PACKET;
-        }
-    }
-
-    else if(packetOpcode == '3') // DATA packet
-    {
-        if(this->currentPacketClientAddress.address.sin_addr.s_addr != this->originalClientAddress.address.sin_addr.s_addr) // we are in a session with another client
-        {
-            this->SendErrorPacketToCurrentClient(4, "Unexpected packet");
-            return GET_NEXT_PACKET;
-        }
-        else
-            return this->HandleDataPacket();
-    }
-    else
-    {
-        if(this->currentPacketClientAddress.address.sin_addr.s_addr != this->originalClientAddress.address.sin_addr.s_addr) // we are in a session with another client
+        if (recvfromReturnValue < 0)
+            Helpers::ExitProgramWithPERROR("recvfrom() failed");
+        packetOpcode = this->packetDataBuffer[0];
+        if(this->currentPacketClientAddress.address.sin_addr.s_addr != this->originalClientAddress.address.sin_addr.s_addr) // we got a packet from a different client
         {
             this->SendErrorPacketToCurrentClient(4, "Unexpected packet");
             return GET_NEXT_PACKET;
         }
         else
         {
-            this->SendErrorPacketToOriginalClient(4, "Unexpected packet");
-            return END_CONNECTION_FAILURE;
+            if(packetOpcode == '2') // WRQ packet
+            {
+                this->SendErrorPacketToCurrentClient(4, "Unexpected packet"); //TODO - should we send to original?!
+                return GET_NEXT_PACKET; //TODO - should we end connection with original client?!
+            }
+            else if(packetOpcode == '3') // DATA packet
+            {
+                return this->HandleDataPacket();
+            }
+            else
+            {
+                this->SendErrorPacketToCurrentClient(4, "Unexpected packet");
+                return GET_NEXT_PACKET;
+            }
         }
     }
 }
@@ -130,12 +132,7 @@ int Session::RecievePacketFromClient()
 int Session::HandleWrqPacket()
 {
     struct WrqPacket wrqPacket = Helpers::ParseBufferAsWrqPacket(this->packetDataBuffer);
-    if(this->originalClientAddress.address.sin_addr.s_addr != NOT_EXCIST) // we are already in a session with another client
-    {
-        this->SendErrorPacketToCurrentClient(4, "Unexpected packet");
-        return END_CONNECTION_FAILURE;
-    }
-    else if(FileManager::isFileExcist(wrqPacket.fileName)) 
+    if(FileManager::isFileExcist(wrqPacket.fileName)) 
     {
         this->SendErrorPacketToCurrentClient(6, "File already exists");
         return END_CONNECTION_FAILURE;
@@ -153,12 +150,7 @@ int Session::HandleWrqPacket()
 int Session::HandleDataPacket()
 {
     struct DataPacket dataPacket = Helpers::ParseBufferAsDataPacket(this->packetDataBuffer);
-    if(this->originalClientAddress.address.sin_addr.s_addr == NOT_EXCIST) // we are not in a session with a client
-    {
-        this->SendErrorPacketToCurrentClient(4, "Unexpected packet");
-        return END_CONNECTION_FAILURE;
-    }
-    else if(ntohs(dataPacket.blockNumber) != this->numberOfBlocksRecieved + 1) // wrong block number
+    if(ntohs(dataPacket.blockNumber) != this->numberOfBlocksRecieved + 1) // wrong block number
     {
         this->SendErrorPacketToCurrentClient(0, "Bad block number");
         return END_CONNECTION_FAILURE;
