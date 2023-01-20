@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <cstring>
 #include "Helpers.hpp"
 #include "Session.hpp"
 #include "PacketStructs.hpp"

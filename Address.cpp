@@ -1,5 +1,6 @@
 #include "Address.hpp"
 #include "Helpers.hpp"
+#include <cstring>
 
 Address::Address()
 {
