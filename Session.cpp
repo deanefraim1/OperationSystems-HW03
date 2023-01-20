@@ -58,7 +58,7 @@ void Session::SendAckPacket()
         Helpers::ExitProgramWithPERROR("sendto() failed");
 }
 
-void Session::SendErrorPacketToCurrentClient(short errorCode, string errorMessage)
+void Session::SendErrorPacketToCurrentPacketClient(short errorCode, string errorMessage)
 {
     struct ErrorPacket errorPacket;
     errorPacket.errorCode = htons(errorCode);
@@ -94,7 +94,7 @@ int Session::RecievePacketFromClient()
         }
         else
         {
-            this->SendErrorPacketToCurrentClient(7, "Unknown user");
+            this->SendErrorPacketToCurrentPacketClient(7, "Unknown user");
             return GET_NEXT_PACKET;
         }
     }
@@ -106,14 +106,14 @@ int Session::RecievePacketFromClient()
         packetOpcode = this->packetDataBuffer[0];
         if(this->currentPacketClientAddress.address.sin_addr.s_addr != this->originalClientAddress.address.sin_addr.s_addr) // we got a packet from a different client
         {
-            this->SendErrorPacketToCurrentClient(4, "Unexpected packet");
+            this->SendErrorPacketToCurrentPacketClient(4, "Unexpected packet");
             return GET_NEXT_PACKET;
         }
         else
         {
             if(packetOpcode == '2') // WRQ packet
             {
-                this->SendErrorPacketToCurrentClient(4, "Unexpected packet"); //TODO - should we send to original?!
+                this->SendErrorPacketToCurrentPacketClient(4, "Unexpected packet"); //TODO - should we send to original?!
                 return GET_NEXT_PACKET; //TODO - should we end connection with original client?!
             }
             else if(packetOpcode == '3') // DATA packet
@@ -122,7 +122,7 @@ int Session::RecievePacketFromClient()
             }
             else
             {
-                this->SendErrorPacketToCurrentClient(4, "Unexpected packet");
+                this->SendErrorPacketToCurrentPacketClient(4, "Unexpected packet");
                 return GET_NEXT_PACKET;
             }
         }
@@ -134,7 +134,7 @@ int Session::HandleWrqPacket()
     struct WrqPacket wrqPacket = Helpers::ParseBufferAsWrqPacket(this->packetDataBuffer);
     if(FileManager::isFileExcist(wrqPacket.fileName)) 
     {
-        this->SendErrorPacketToCurrentClient(6, "File already exists");
+        this->SendErrorPacketToOriginalClient(6, "File already exists");
         return END_CONNECTION_FAILURE;
     }    
     else
@@ -152,7 +152,7 @@ int Session::HandleDataPacket()
     struct DataPacket dataPacket = Helpers::ParseBufferAsDataPacket(this->packetDataBuffer);
     if(ntohs(dataPacket.blockNumber) != this->numberOfBlocksRecieved + 1) // wrong block number
     {
-        this->SendErrorPacketToCurrentClient(0, "Bad block number");
+        this->SendErrorPacketToOriginalClient(0, "Bad block number");
         return END_CONNECTION_FAILURE;
     }
     else

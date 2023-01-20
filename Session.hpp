@@ -38,7 +38,7 @@ public:
     void CleanCurrentPacketClientAddress();
     void CleanDataBuffer();
     void SendAckPacket();
-    void SendErrorPacketToCurrentClient(short errorCode, string errorMessage);
+    void SendErrorPacketToCurrentPacketClient(short errorCode, string errorMessage);
     void SendErrorPacketToOriginalClient(short errorCode, string errorMessage);
     int RecievePacketFromClient();
     int HandleWrqPacket();
