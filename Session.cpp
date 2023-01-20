@@ -13,7 +13,7 @@ using namespace std;
 Session::Session(unsigned short serverPort, int timeoutLimit, int maxNumberOfResendsAllowed)
 {
     this->InitializeSocket();
-    this->serverAddress.InitializeAsServerAddress(serverPort);
+    this->serverAddress.InitializeAsServerAddress(this->socketFd, serverPort);
     this->CleanDataBuffer();
     this->timeoutLimitVal = Helpers::ParseTimeoutLimitAsTimeval(timeoutLimit);
     this->maxNumberOfResendsAllowed = maxNumberOfResendsAllowed;

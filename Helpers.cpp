@@ -10,9 +10,9 @@
 
 using namespace std;
 
-void Helpers::BindAddressToSocket(struct sockaddr_in address, int socketFd)
+void Helpers::BindAddressToSocket(struct sockaddr_in address, socklen_t addressLength, int socketFd)
 {
-    int bindReturnValue = ::bind(socketFd, (struct sockaddr *)&address, sizeof(address));
+    int bindReturnValue = ::bind(socketFd, (struct sockaddr *)&address, addressLength);
     if (bindReturnValue < 0)
         Helpers::ExitProgramWithPERROR("bind() failed");
 }
@@ -27,7 +27,9 @@ void Helpers::ReceiveMassage(Session session)
             Helpers::ExitProgramWithPERROR("select() failed");
         else if(selectReturnValue == 0) // timeout has reached
         {
-            if(session.currentNumberOfResends >= session.maxNumberOfResendsAllowed) // no more resends allowed
+            if(session.originalClient.addressLength == 0) // no client is connected
+                return;
+            else if(session.currentNumberOfResends >= session.maxNumberOfResendsAllowed) // no more resends allowed
             {
                 if(session.originalClientFileToWriteTo.fd != NOT_EXIST) // if a file is open
                     session.originalClientFileToWriteTo.DeleteFile();       
@@ -56,7 +58,7 @@ void Helpers::ReceiveMassage(Session session)
                 session.EndClientConnection();
                 return;
             }
-            session.CleanCurrentPacketClientAddress();
+            session.currentPacketClient.CleanAddress();
             session.CleanDataBuffer();
         } 
     }

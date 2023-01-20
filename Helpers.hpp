@@ -9,7 +9,7 @@
 class Helpers
 {
 public:
-    static void BindAddressToSocket(struct sockaddr_in address, int socketFd);
+    static void BindAddressToSocket(struct sockaddr_in address, socklen_t addressLength, int socketFd);
     static void ReceiveMassage(Session session);
     static short ParseOpcodeFromBuffer(char buffer[516]);
     static struct WrqPacket ParseBufferAsWrqPacket(char buffer[516]);

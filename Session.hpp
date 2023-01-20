@@ -34,8 +34,6 @@ public:
     void InitializeSocket();
     void InitializeServerAddress(unsigned short serverPort);
     void EndClientConnection();
-    void CleanOriginalClientAddress();
-    void CleanCurrentPacketClientAddress();
     void CleanDataBuffer();
     void SendAckPacket();
     void SendErrorPacketToCurrentPacketClient(short errorCode, string errorMessage);

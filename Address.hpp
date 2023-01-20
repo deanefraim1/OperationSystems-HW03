@@ -10,7 +10,7 @@ public:
     socklen_t addressLength;
 
     Address();
-    void InitializeAsServerAddress(unsigned short serverPort);
+    void InitializeAsServerAddress(int socketFd, unsigned short serverPort);
     void CleanAddress();
 };
 
