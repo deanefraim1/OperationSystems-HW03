@@ -23,7 +23,7 @@ void Helpers::ReceiveMassage(Session session)
     {
         fd_set socketFdSet = Helpers::GetSocketFdSetFromOneSocketFd(session.socketFd);
         int selectReturnValue = select(session.socketFd + 1, &socketFdSet, NULL, NULL, &(session.timeoutLimitVal));
-        if(selectReturnValue < 0)
+        if(selectReturnValue < 0) // select() failed
             Helpers::ExitProgramWithPERROR("select() failed");
         else if(selectReturnValue == 0) // timeout has reached
         {
@@ -56,8 +56,17 @@ void Helpers::ReceiveMassage(Session session)
                 session.EndClientConnection();
                 return;
             }
+            session.CleanCurrentPacketClientAddress();
+            session.CleanDataBuffer();
         } 
     }
+}
+
+short Helpers::ParseOpcodeFromBuffer(char buffer[516])
+{
+    short opcode;
+    memcpy(&opcode, buffer, 2);
+    return ntohs(opcode);
 }
 
 struct WrqPacket Helpers::ParseBufferAsWrqPacket(char buffer[516])
@@ -71,6 +80,7 @@ struct DataPacket Helpers::ParseBufferAsDataPacket(char buffer[516])
 {
     struct DataPacket dataPacket;
     memcpy(&dataPacket.blockNumber, buffer + 2, 2);
+    dataPacket.blockNumber = ntohs(dataPacket.blockNumber);
     for (int i = 4; i < 516; i++)
     {
         dataPacket.data[i - 4] = buffer[i];  
@@ -84,6 +94,7 @@ struct AckPacket Helpers::ParseBufferAsAckPacket(char buffer[516])
 {
     struct AckPacket ackPacket;
     memcpy(&ackPacket.blockNumber, buffer + 2, 2);  
+    ackPacket.blockNumber = ntohs(ackPacket.blockNumber);
     return ackPacket;
 }
 
@@ -113,4 +124,10 @@ void Helpers::ExitProgramWithSTDERROR(string errorMessage)
 {
     cout << "TTFTP_ERROR: " << errorMessage << endl;
     exit(1);
+}
+
+bool Helpers::AdressesAreEqual(Address address1, Address address2)
+{
+    return (address1.address.sin_addr.s_addr == address2.address.sin_addr.s_addr) &&
+            (address1.address.sin_port == address2.address.sin_port);
 }

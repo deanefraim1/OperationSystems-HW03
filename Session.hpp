@@ -22,8 +22,8 @@ public:
     int socketFd;
     FileManager originalClientFileToWriteTo;
     Address serverAddress;
-    Address originalClientAddress;
-    Address currentPacketClientAddress;
+    Address originalClient;
+    Address currentPacketClient;
     char packetDataBuffer[MAX_BUFFER_SIZE];
     timeval timeoutLimitVal;
     int maxNumberOfResendsAllowed;
