@@ -110,12 +110,12 @@ int Session::RecievePacketFromClient()
             this->SendErrorPacketToCurrentPacketClient(4, "Unexpected packet"); // TODO - shuld we ++ the number of resends?
             return GET_NEXT_PACKET;
         }
-        else
+        else // we got a packet from the original client
         {
             if(packetOpcode == 2) // WRQ packet
             {
                 this->SendErrorPacketToOriginalClient(4, "Unexpected packet");
-                return GET_NEXT_PACKET; //TODO - should we end connection with original client?!
+                return END_CONNECTION_FAILURE; //TODO - should we end connection with original client?!
             }
             else if(packetOpcode == 3) // DATA packet
             {
@@ -124,7 +124,7 @@ int Session::RecievePacketFromClient()
             else
             {
                 this->SendErrorPacketToOriginalClient(4, "Unexpected packet");
-                return GET_NEXT_PACKET;//TODO - should we end connection with original client?!
+                return END_CONNECTION_FAILURE;//TODO - should we end connection with original client?!
             }
         }
     }

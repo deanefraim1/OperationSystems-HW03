@@ -2,6 +2,7 @@
 #define PACKETSTRUCTS_HPP
 
 #include <string>
+#include <arpa/inet.h>
 
 #define MAX_DATA_SIZE 512
 #define MAX_FILE_NAME_SIZE 508
@@ -12,27 +13,27 @@ using namespace std;
 
 struct WrqPacket
 {
-    const short opcode = 2;
+    const short opcode = ntohs(2);
     char fileName[MAX_FILE_NAME_SIZE];
     const char transmissionMode[TRANSMISSION_MODE_SIZE] = "octet";
 }__attribute__((packed));
 
 struct AckPacket
 {
-    const short opcode = 4;
+    const short opcode = htons(4);
     short blockNumber;
 }__attribute__((packed));
 
 struct DataPacket
 {
-    const short opcode = 3;
+    const short opcode = ntohs(3);
     short blockNumber;
     char data[MAX_DATA_SIZE];
 }__attribute__((packed));
 
 struct ErrorPacket
 {
-    const short opcode = 5;
+    const short opcode = htons(5);
     short errorCode;
     char errorMessage[MAX_ERROR_MESSAGE_SIZE];
 }__attribute__((packed));

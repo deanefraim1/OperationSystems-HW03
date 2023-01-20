@@ -46,5 +46,5 @@ bool FileManager::isFileExcist(string fileName)
     if (fd == -1) // file does not excist
         return false;
     close(fd);
-    return true; 
+    return true;
 }
