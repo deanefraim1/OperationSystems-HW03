@@ -91,6 +91,11 @@ int Session::RecievePacketFromClient()
     if (this->originalClient.addressLength == 0) // we are not in a session with a client
     {
         recvfromReturnValue = recvfrom(this->socketFd, this->packetDataBuffer, MAX_BUFFER_SIZE, 0, (struct sockaddr *)&(this->originalClient.address), &(this->originalClient.addressLength));
+        cout << "socketFd: " << this->socketFd << endl;
+        cout << "block number: " << this->numberOfBlocksRecieved << endl;
+        cout << "address: " << this->originalClient.address.sin_addr.s_addr << endl;
+        cout << "port: " << this->originalClient.address.sin_port << endl;
+        cout << "address length: " << this->originalClient.addressLength << endl;
         if (recvfromReturnValue < 0)
             Helpers::ExitProgramWithPERROR("recvfrom() failed");
         packetOpcode = Helpers::ParseOpcodeFromBuffer(this->packetDataBuffer);
