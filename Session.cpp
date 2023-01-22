@@ -83,7 +83,7 @@ int Session::RecievePacketFromClient()
 {
     int recvfromReturnValue;
     short packetOpcode;
-    if (this->originalClient.addressLength == 0) // we are not in a session with a client
+    if (this->originalClient.address.sin_addr.s_addr == 0) // we are not in a session with a client
     {
         recvfromReturnValue = recvfrom(this->socketFd, this->packetDataBuffer, MAX_BUFFER_SIZE, 0, (struct sockaddr *)&(this->originalClient.address), &(this->originalClient.addressLength));
         if (recvfromReturnValue <= 0)

@@ -28,7 +28,7 @@ void Helpers::ReceiveMassage(Session session)
             Helpers::ExitProgramWithPERROR("select() failed");
         else if(selectReturnValue == 0) // timeout has reached
         {
-            if(session.originalClient.addressLength == 0) // no client is connected
+            if(session.originalClient.address.sin_addr.s_addr == 0) // no client is connected
                 return;
             else if(session.currentNumberOfResends >= session.maxNumberOfResendsAllowed) // no more resends allowed
             {
