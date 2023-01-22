@@ -90,17 +90,13 @@ int Session::RecievePacketFromClient()
         cout << "address: " << this->originalClient.address.sin_addr.s_addr << endl;
         cout << "port: " << this->originalClient.address.sin_port << endl;
         cout << "address length: " << this->originalClient.addressLength << endl;
-        struct sockaddr * a = (struct sockaddr *)&(this->originalClient.address);
-        cout << "data: " << a->sa_data << endl;
-        sockaddr_in b = {0};
-        recvfromReturnValue = recvfrom(this->socketFd, this->packetDataBuffer, MAX_BUFFER_SIZE, 0, (struct sockaddr *)&b, &(this->originalClient.addressLength));
-        cout << "b is " << b.sin_addr.s_addr << endl;
+        recvfromReturnValue = recvfrom(this->socketFd, this->packetDataBuffer, MAX_BUFFER_SIZE, 0, (struct sockaddr *)&(this->originalClient.address), &(this->originalClient.addressLength));
+        cout << "recvfromReturnValue: " << recvfromReturnValue << endl;
         cout << "socketFd: " << this->socketFd << endl;
         cout << "block number: " << this->numberOfBlocksRecieved << endl;
         cout << "address: " << this->originalClient.address.sin_addr.s_addr << endl;
         cout << "port: " << this->originalClient.address.sin_port << endl;
         cout << "address length: " << this->originalClient.addressLength << endl;
-        cout << "data: " << a->sa_data << endl;
         if (recvfromReturnValue <= 0)
             Helpers::ExitProgramWithPERROR("recvfrom() failed");
         packetOpcode = Helpers::ParseOpcodeFromBuffer(this->packetDataBuffer);
