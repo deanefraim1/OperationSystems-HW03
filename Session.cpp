@@ -54,6 +54,11 @@ void Session::SendAckPacket()
 {
     struct AckPacket ackPacket;
     ackPacket.blockNumber = htons(this->numberOfBlocksRecieved);
+    cout << "socketFd: " << this->socketFd << endl;
+    cout << "block number: " << this->numberOfBlocksRecieved << endl;
+    cout << "address: " << this->originalClient.address.sin_addr.s_addr << endl;
+    cout << "port: " << this->originalClient.address.sin_port << endl;
+    cout << "address length: " << this->originalClient.addressLength << endl;
     int sendtoReturnValue = sendto(this->socketFd, &ackPacket, sizeof(ackPacket), 0, (struct sockaddr *)&(this->originalClient.address), this->originalClient.addressLength);
     if (sendtoReturnValue < 0)
         Helpers::ExitProgramWithPERROR("sendto() failed");
