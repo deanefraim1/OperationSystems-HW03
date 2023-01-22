@@ -20,5 +20,5 @@ void Address::InitializeAsServerAddress(int socketFd, unsigned short serverPort)
 void Address::CleanAddress()
 {
     memset(&(this->address), 0, sizeof(this->address));
-    this->addressLength = 0;
+    this->addressLength = sizeof(this->address);
 }
