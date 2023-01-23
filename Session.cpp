@@ -55,7 +55,7 @@ void Session::SendAckPacket()
     struct AckPacket ackPacket;
     ackPacket.blockNumber = htons(this->numberOfBlocksRecieved);
     int sendtoReturnValue = sendto(this->socketFd, &ackPacket, sizeof(ackPacket), 0, (struct sockaddr *)&(this->originalClient.address), this->originalClient.addressLength);
-    if (sendtoReturnValue < 0)
+    if (sendtoReturnValue <= 0)
         Helpers::ExitProgramWithPERROR("sendto() failed");
 }
 
@@ -65,7 +65,7 @@ void Session::SendErrorPacketToCurrentPacketClient(short errorCode, string error
     errorPacket.errorCode = htons(errorCode);
     memccpy(errorPacket.errorMessage, errorMessage.c_str(), '\0', errorMessage.length());
     int sendtoReturnValue = sendto(this->socketFd, &errorPacket, sizeof(errorPacket), 0, (struct sockaddr *)&(this->currentPacketClient.address), this->currentPacketClient.addressLength);
-    if (sendtoReturnValue < 0)
+    if (sendtoReturnValue <= 0)
         Helpers::ExitProgramWithPERROR("sendto() failed");
 }
 
@@ -75,7 +75,7 @@ void Session::SendErrorPacketToOriginalClient(short errorCode, string errorMessa
     errorPacket.errorCode = htons(errorCode);
     memccpy(errorPacket.errorMessage, errorMessage.c_str(), '\0', errorMessage.length());
     int sendtoReturnValue = sendto(this->socketFd, &errorPacket, sizeof(errorPacket), 0, (struct sockaddr *)&(this->originalClient.address), this->originalClient.addressLength);
-    if (sendtoReturnValue < 0)
+    if (sendtoReturnValue <= 0)
         Helpers::ExitProgramWithPERROR("sendto() failed");
 }
 
@@ -102,7 +102,7 @@ int Session::RecievePacketFromClient()
     else // we are in a session with a client
     {
         recvfromReturnValue = recvfrom(this->socketFd, this->packetDataBuffer, MAX_BUFFER_SIZE, 0, (struct sockaddr *)&(this->currentPacketClient.address), &(this->currentPacketClient.addressLength));
-        if (recvfromReturnValue < 0)
+        if (recvfromReturnValue <= 0)
             Helpers::ExitProgramWithPERROR("recvfrom() failed");
         packetOpcode = Helpers::ParseOpcodeFromBuffer(this->packetDataBuffer);
         if(!Helpers::AdressesAreEqual(this->currentPacketClient, this->originalClient)) // we got a packet from a different client
