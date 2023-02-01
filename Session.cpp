@@ -96,7 +96,7 @@ int Session::RecievePacketFromClient()
         else
         {
             this->SendErrorPacketToOriginalClient(7, "Unknown user");
-            return GET_NEXT_PACKET;
+            return END_CONNECTION_FAILURE;
         }
     }
     else // we are in a session with a client
