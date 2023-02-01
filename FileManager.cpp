@@ -33,7 +33,7 @@ void FileManager::CloseFile()
     this->fd = NOT_EXCIST;
 }
 
-void FileManager::WriteToFile(char* data, int size)
+void FileManager::WriteToFile(char* data, size_t size)
 {
     int writeReturnValue = write(this->fd, data, size);
     if (writeReturnValue < 0)

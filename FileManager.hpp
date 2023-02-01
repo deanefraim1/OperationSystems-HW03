@@ -17,7 +17,7 @@ public:
     FileManager(string fileName);
     void DeleteFile();
     void CloseFile();
-    void WriteToFile(char* data, int size);
+    void WriteToFile(char* data, size_t size);
     static bool isFileExcist(string fileName);
 };
 

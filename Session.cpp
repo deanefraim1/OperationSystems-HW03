@@ -95,7 +95,7 @@ int Session::RecievePacketFromClient()
         }
         else
         {
-            this->SendErrorPacketToCurrentPacketClient(7, "Unknown user");
+            this->SendErrorPacketToOriginalClient(7, "Unknown user");
             return GET_NEXT_PACKET;
         }
     }
@@ -158,7 +158,7 @@ int Session::HandleDataPacket()
     }
     else
     {
-        this->originalClientFileToWriteTo.WriteToFile(dataPacket.data, strlen(dataPacket.data));
+        this->originalClientFileToWriteTo.WriteToFile(dataPacket.data, (strlen(dataPacket.data) < MAX_DATA_SIZE) ? strlen(dataPacket.data) : strlen(dataPacket.data)-1);
         this->numberOfBlocksRecieved++;
         this->currentNumberOfResends = 0;
         this->SendAckPacket();
